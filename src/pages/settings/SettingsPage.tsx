@@ -1,72 +1,183 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Building2, Users, Shield, Bell, Mail, Globe, CreditCard, Database,
-  Zap, ChevronRight, ChevronLeft, Phone, MapPin, Lock, Key, Smartphone,
-  QrCode, CheckCircle2, Copy, RefreshCw, AlertTriangle, Eye, EyeOff,
-  Clock, UserCheck, FileText, Wifi, Server, ToggleLeft, ToggleRight,
+  Zap, ChevronRight, ChevronLeft, Phone, Lock, Key, Smartphone,
+  QrCode, CheckCircle2, Copy, AlertTriangle, Eye, EyeOff,
+  Wifi, Server, Save, X, Check,
 } from "lucide-react";
+import { useSettings } from "../../context/SettingsContext";
 
 type SubPage = null | "general" | "users" | "security" | "notifications" | "email" | "localization" | "billing-sub" | "backup" | "integrations-settings";
 
 const settingsNav: { id: SubPage; icon: React.ElementType; label: string; sub: string }[] = [
-  { id: "general",               icon: Building2,    label: "General",           sub: "Company name, phone, address" },
-  { id: "users",                 icon: Users,         label: "Users & Roles",     sub: "Manage access and permissions" },
-  { id: "security",              icon: Shield,        label: "Security & 2FA",    sub: "2FA, passwords, sessions" },
-  { id: "notifications",         icon: Bell,          label: "Notifications",     sub: "Email, SMS, push alerts" },
-  { id: "email",                 icon: Mail,          label: "Email / SMTP",      sub: "SMTP, templates, tracking" },
-  { id: "localization",          icon: Globe,         label: "Localization",      sub: "Timezone, currency, language" },
-  { id: "billing-sub",           icon: CreditCard,    label: "Billing",           sub: "Subscription, invoices" },
-  { id: "backup",                icon: Database,      label: "Backup & Storage",  sub: "Cloud storage, backups" },
-  { id: "integrations-settings", icon: Zap,           label: "Integrations",      sub: "API, webhooks, third-party" },
+  { id: "general",               icon: Building2,  label: "General",           sub: "Company name, phone, address" },
+  { id: "users",                 icon: Users,      label: "Users & Roles",     sub: "Manage access and permissions" },
+  { id: "security",              icon: Shield,     label: "Security & 2FA",    sub: "2FA, passwords, sessions" },
+  { id: "notifications",         icon: Bell,       label: "Notifications",     sub: "Email, SMS, push alerts" },
+  { id: "email",                 icon: Mail,       label: "Email / SMTP",      sub: "SMTP, templates, tracking" },
+  { id: "localization",          icon: Globe,      label: "Localization",      sub: "Timezone, currency, language" },
+  { id: "billing-sub",           icon: CreditCard, label: "Billing",           sub: "Subscription, invoices" },
+  { id: "backup",                icon: Database,   label: "Backup & Storage",  sub: "Cloud storage, backups" },
+  { id: "integrations-settings", icon: Zap,        label: "Integrations",      sub: "API, webhooks, third-party" },
 ];
+
+/* ─── Save confirmation modal ─── */
+interface SaveConfirmProps {
+  label: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+function SaveConfirm({ label, onConfirm, onCancel }: SaveConfirmProps) {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  function handleConfirm() {
+    setSaving(true);
+    setTimeout(() => {
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => { onConfirm(); }, 900);
+    }, 1000);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      style={{ animation: "scIn 0.18s ease" }}
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 text-center"
+        style={{ animation: "scSlide 0.22s cubic-bezier(0.34,1.56,0.64,1)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors ${saved ? "bg-emerald-50" : "bg-blue-50"}`}>
+          {saved
+            ? <Check size={26} className="text-emerald-500" />
+            : <Save size={22} className="text-blue-500" />
+          }
+        </div>
+        <h3 className="text-lg font-black text-slate-900 mb-1" style={{ fontFamily: "var(--font-display)" }}>
+          {saved ? "Changes Saved" : "Save Changes?"}
+        </h3>
+        <p className="text-sm text-slate-500 mb-6">
+          {saved
+            ? `${label} settings have been updated successfully.`
+            : `You are about to save changes to ${label}. This will update your organization settings immediately.`
+          }
+        </p>
+        {!saved && (
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 py-3 text-sm font-semibold border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <X size={13} /> Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={saving}
+              className="flex-1 py-3 text-sm font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white rounded-xl transition-colors flex items-center justify-center gap-1.5"
+            >
+              {saving
+                ? <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Saving…</>
+                : <><Save size={13} /> Save Changes</>
+              }
+            </button>
+          </div>
+        )}
+      </div>
+      <style>{`
+        @keyframes scIn{from{opacity:0}to{opacity:1}}
+        @keyframes scSlide{from{transform:scale(0.88) translateY(10px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+      `}</style>
+    </div>
+  );
+}
 
 /* ─── Sub-page components ─── */
 
-function GeneralSettings() {
+function GeneralSettings({ onSave }: { onSave: (draft: Record<string, string>) => void }) {
+  const { settings } = useSettings();
+  const [draft, setDraft] = useState({
+    name:        settings.name,
+    legalName:   settings.legalName,
+    phone:       settings.phone,
+    email:       settings.email,
+    website:     settings.website,
+    address:     settings.address,
+    regNo:       settings.regNo,
+    vatNo:       settings.vatNo,
+    bankName:    settings.bankName,
+    bankBranch:  settings.bankBranch,
+    accountName: settings.accountName,
+    accountNo:   settings.accountNo,
+    swiftCode:   settings.swiftCode,
+  });
+
+  const field = (key: keyof typeof draft, label: string, type = "text", full = false) => (
+    <div key={key} className={full ? "col-span-2" : ""}>
+      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</label>
+      {key === "address"
+        ? <textarea value={draft[key]} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} rows={2}
+            className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+        : <input value={draft[key]} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} type={type}
+            className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      }
+    </div>
+  );
+
   return (
-    <div className="space-y-5">
-      <p className="text-xs text-slate-400 mb-4">Organization contact information used across documents, invoices, and communications.</p>
-      <div className="grid grid-cols-2 gap-4">
-        {([
-          { label: "Company Name",   value: "MernCrest IT Services (Pvt) Ltd", type: "text" },
-          { label: "Phone",          value: "+94 11 234 5678",                  type: "tel"  },
-        ] as const).map(f => (
-          <div key={f.label}>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{f.label}</label>
-            <input defaultValue={f.value} type={f.type}
-              className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-          </div>
-        ))}
+    <div className="space-y-6">
+      <div>
+        <h4 className="text-sm font-bold text-slate-800 mb-3">Company Identity</h4>
+        <div className="grid grid-cols-2 gap-4">
+          {field("name",      "Trading Name")}
+          {field("legalName", "Legal / Registered Name")}
+          {field("regNo",     "Company Reg. No.")}
+          {field("vatNo",     "VAT Number")}
+          {field("address",   "Registered Address", "text", true)}
+        </div>
       </div>
       <div>
-        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Address</label>
-        <textarea defaultValue="No. 42, Galle Road, Colombo 03, Sri Lanka" rows={2}
-          className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+        <h4 className="text-sm font-bold text-slate-800 mb-3">Contact Details</h4>
+        <div className="grid grid-cols-2 gap-4">
+          {field("phone",   "Phone",   "tel")}
+          {field("email",   "Email",   "email")}
+          {field("website", "Website", "url")}
+        </div>
       </div>
       <div>
-        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Location / Region</label>
-        <select className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option>Western Province, Sri Lanka</option>
-          <option>Central Province, Sri Lanka</option>
-          <option>Southern Province, Sri Lanka</option>
-        </select>
+        <h4 className="text-sm font-bold text-slate-800 mb-3">Bank Details</h4>
+        <div className="grid grid-cols-2 gap-4">
+          {field("bankName",    "Bank Name")}
+          {field("bankBranch",  "Branch")}
+          {field("accountName", "Account Name")}
+          {field("accountNo",   "Account Number")}
+          {field("swiftCode",   "SWIFT / BIC Code")}
+        </div>
       </div>
       <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-        <button className="text-sm border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-slate-600 transition-colors">Discard</button>
-        <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">Save Changes</button>
+        <button onClick={() => setDraft({ name: settings.name, legalName: settings.legalName, phone: settings.phone, email: settings.email, website: settings.website, address: settings.address, regNo: settings.regNo, vatNo: settings.vatNo, bankName: settings.bankName, bankBranch: settings.bankBranch, accountName: settings.accountName, accountNo: settings.accountNo, swiftCode: settings.swiftCode })}
+          className="text-sm border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-slate-600 transition-colors">
+          Discard
+        </button>
+        <button onClick={() => onSave(draft)}
+          className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+          <Save size={13} /> Save Changes
+        </button>
       </div>
     </div>
   );
 }
 
-function SecuritySettings() {
+function SecuritySettings({ onSave }: { onSave: () => void }) {
   const [twoFAMethod, setTwoFAMethod] = useState<"none" | "totp" | "sms">("none");
   const [totpStep, setTotpStep] = useState<"setup" | "verify" | "done">("setup");
   const [totpCode, setTotpCode] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [pwVisible, setPwVisible] = useState(false);
   const secret = "JBSWY3DPEHPK3PXP";
-  const qrUrl = `otpauth://totp/MernCrest:admin@merncrest.com?secret=${secret}&issuer=MernCrest`;
 
   function verifyTOTP() {
     if (totpCode.length === 6) { setTotpStep("done"); setTwoFAMethod("totp"); }
@@ -74,7 +185,6 @@ function SecuritySettings() {
 
   return (
     <div className="space-y-6">
-      {/* Password policy */}
       <div>
         <h4 className="text-sm font-semibold text-slate-800 mb-3">Password & Session Policy</h4>
         <div className="space-y-3">
@@ -95,9 +205,13 @@ function SecuritySettings() {
             </div>
           ))}
         </div>
+        <div className="flex justify-end mt-3">
+          <button onClick={onSave} className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+            <Save size={13} /> Save Policy
+          </button>
+        </div>
       </div>
 
-      {/* 2FA Setup */}
       <div className="border border-slate-200 rounded-xl overflow-hidden">
         <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -113,12 +227,10 @@ function SecuritySettings() {
         <div className="p-5">
           {twoFAMethod === "none" && totpStep !== "done" && (
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">Choose your 2FA method. Google Authenticator is recommended for security.</p>
+              <p className="text-sm text-slate-600">Choose your 2FA method. Google Authenticator is recommended.</p>
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => { setTwoFAMethod("totp"); setTotpStep("setup"); }}
-                  className="flex flex-col items-start gap-2 p-4 border-2 border-slate-200 hover:border-blue-500 rounded-xl transition-all group"
-                >
+                <button onClick={() => { setTwoFAMethod("totp"); setTotpStep("setup"); }}
+                  className="flex flex-col items-start gap-2 p-4 border-2 border-slate-200 hover:border-blue-500 rounded-xl transition-all group">
                   <div className="w-9 h-9 bg-slate-100 group-hover:bg-blue-50 rounded-xl flex items-center justify-center transition-colors">
                     <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                   </div>
@@ -127,10 +239,8 @@ function SecuritySettings() {
                     <p className="text-xs text-slate-500 mt-0.5">Scan QR code with the app</p>
                   </div>
                 </button>
-                <button
-                  onClick={() => setTwoFAMethod("sms")}
-                  className="flex flex-col items-start gap-2 p-4 border-2 border-slate-200 hover:border-blue-500 rounded-xl transition-all group"
-                >
+                <button onClick={() => setTwoFAMethod("sms")}
+                  className="flex flex-col items-start gap-2 p-4 border-2 border-slate-200 hover:border-blue-500 rounded-xl transition-all group">
                   <div className="w-9 h-9 bg-slate-100 group-hover:bg-blue-50 rounded-xl flex items-center justify-center transition-colors">
                     <Phone size={18} className="text-slate-500 group-hover:text-blue-600" />
                   </div>
@@ -142,7 +252,6 @@ function SecuritySettings() {
               </div>
             </div>
           )}
-
           {twoFAMethod === "totp" && totpStep === "setup" && (
             <div className="space-y-4">
               <div className="flex items-start gap-4">
@@ -166,33 +275,23 @@ function SecuritySettings() {
                       <Copy size={11} />
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Manual entry key (if QR scan fails)</p>
                 </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Enter 6-digit code to verify</label>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <input
-                    value={totpCode}
-                    onChange={e => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  <input value={totpCode} onChange={e => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="000000"
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono tracking-[0.4em] text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={verifyTOTP}
-                    disabled={totpCode.length !== 6}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors"
-                  >
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono tracking-[0.4em] text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button onClick={verifyTOTP} disabled={totpCode.length !== 6}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors">
                     Verify
                   </button>
                 </div>
               </div>
-              <button onClick={() => { setTwoFAMethod("none"); setTotpCode(""); }} className="text-xs text-slate-400 hover:text-slate-600">
-                ← Cancel setup
-              </button>
+              <button onClick={() => { setTwoFAMethod("none"); setTotpCode(""); }} className="text-xs text-slate-400 hover:text-slate-600">← Cancel setup</button>
             </div>
           )}
-
           {twoFAMethod === "totp" && totpStep === "done" && (
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -202,15 +301,12 @@ function SecuritySettings() {
                 <p className="text-sm font-semibold text-slate-800">Google Authenticator is active</p>
                 <p className="text-xs text-slate-500 mt-0.5">Your account is protected with TOTP-based 2FA.</p>
               </div>
-              <button
-                onClick={() => { setTwoFAMethod("none"); setTotpStep("setup"); setTotpCode(""); }}
-                className="text-xs text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
+              <button onClick={() => { setTwoFAMethod("none"); setTotpStep("setup"); setTotpCode(""); }}
+                className="text-xs text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors">
                 Disable 2FA
               </button>
             </div>
           )}
-
           {twoFAMethod === "sms" && (
             <div className="space-y-3">
               <p className="text-sm text-slate-600">Enter your mobile number to receive one-time codes via SMS.</p>
@@ -225,7 +321,6 @@ function SecuritySettings() {
         </div>
       </div>
 
-      {/* Change password */}
       <div className="border border-slate-200 rounded-xl p-5 space-y-3">
         <h4 className="text-sm font-semibold text-slate-800 flex items-center gap-2"><Lock size={14} />Change Password</h4>
         {["Current Password", "New Password", "Confirm New Password"].map(label => (
@@ -241,19 +336,20 @@ function SecuritySettings() {
             </div>
           </div>
         ))}
-        <button className="text-sm bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-colors">Update Password</button>
+        <button onClick={onSave} className="text-sm bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+          <Save size={13} /> Update Password
+        </button>
       </div>
     </div>
   );
 }
 
-function NotificationsSettings() {
+function NotificationsSettings({ onSave }: { onSave: () => void }) {
   const channels = ["Email", "SMS", "In-app", "Push"];
   const events = [
-    "New ticket assigned",   "Ticket resolved",  "Leave request",
-    "Leave approved/rejected","Invoice overdue",  "Payment received",
-    "Payroll processed",     "System alert",     "New message",
-    "Approval required",
+    "New ticket assigned", "Ticket resolved", "Leave request",
+    "Leave approved/rejected", "Invoice overdue", "Payment received",
+    "Payroll processed", "System alert", "New message", "Approval required",
   ];
   return (
     <div className="space-y-4">
@@ -281,13 +377,15 @@ function NotificationsSettings() {
         </table>
       </div>
       <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">Save Preferences</button>
+        <button onClick={onSave} className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+          <Save size={13} /> Save Preferences
+        </button>
       </div>
     </div>
   );
 }
 
-function EmailSettings() {
+function EmailSettings({ onSave }: { onSave: () => void }) {
   return (
     <div className="space-y-4">
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
@@ -295,38 +393,41 @@ function EmailSettings() {
         <p className="text-xs text-amber-800">SMTP credentials are encrypted and never displayed in plain text. Contact your IT administrator to update them.</p>
       </div>
       {([
-        { label: "SMTP Host",      value: "smtp.merncrest.lk",      type: "text" },
-        { label: "SMTP Port",      value: "587",                     type: "text" },
-        { label: "From Name",      value: "MernCrest ERP",           type: "text" },
-        { label: "From Email",     value: "noreply@merncrest.lk",    type: "email" },
-        { label: "SMTP Username",  value: "noreply@merncrest.lk",    type: "text" },
-        { label: "SMTP Password",  value: "••••••••••••",            type: "password" },
+        { label: "SMTP Host",     value: "smtp.merncrest.lk",   type: "text" },
+        { label: "SMTP Port",     value: "587",                  type: "text" },
+        { label: "From Name",     value: "MernCrest ERP",        type: "text" },
+        { label: "From Email",    value: "noreply@merncrest.lk", type: "email" },
+        { label: "SMTP Username", value: "noreply@merncrest.lk", type: "text" },
+        { label: "SMTP Password", value: "••••••••••••",         type: "password" },
       ] as const).map(f => (
         <div key={f.label}>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{f.label}</label>
-          <input defaultValue={f.value} type={f.type}
-            readOnly={f.type === "password"}
+          <input defaultValue={f.value} type={f.type} readOnly={f.type === "password"}
             className="mt-1.5 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       ))}
       <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-        <button className="text-sm border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-slate-600 transition-colors flex items-center gap-1.5"><Wifi size={13} />Test Connection</button>
-        <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors ml-auto">Save SMTP Config</button>
+        <button className="text-sm border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-slate-600 transition-colors flex items-center gap-1.5">
+          <Wifi size={13} /> Test Connection
+        </button>
+        <button onClick={onSave} className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors ml-auto flex items-center gap-1.5">
+          <Save size={13} /> Save SMTP Config
+        </button>
       </div>
     </div>
   );
 }
 
-function LocalizationSettings() {
+function LocalizationSettings({ onSave }: { onSave: () => void }) {
   return (
     <div className="space-y-4">
       {([
-        { label: "Timezone",         options: ["Asia/Colombo (UTC+5:30)", "UTC", "Asia/Kolkata (UTC+5:30)"] },
-        { label: "Base Currency",    options: ["LKR — Sri Lankan Rupee", "USD — US Dollar", "EUR — Euro"] },
+        { label: "Timezone",           options: ["Asia/Colombo (UTC+5:30)", "UTC", "Asia/Kolkata (UTC+5:30)"] },
+        { label: "Base Currency",      options: ["LKR — Sri Lankan Rupee", "USD — US Dollar", "EUR — Euro"] },
         { label: "Secondary Currency", options: ["USD — US Dollar", "EUR — Euro", "GBP — British Pound"] },
-        { label: "Date Format",      options: ["DD/MM/YYYY", "YYYY-MM-DD", "MM/DD/YYYY"] },
-        { label: "Language",         options: ["English (UK)", "English (US)", "Sinhala", "Tamil"] },
-        { label: "Number Format",    options: ["1,234,567.89", "1.234.567,89"] },
+        { label: "Date Format",        options: ["DD/MM/YYYY", "YYYY-MM-DD", "MM/DD/YYYY"] },
+        { label: "Language",           options: ["English (UK)", "English (US)", "Sinhala", "Tamil"] },
+        { label: "Number Format",      options: ["1,234,567.89", "1.234.567,89"] },
       ] as const).map(f => (
         <div key={f.label}>
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{f.label}</label>
@@ -336,7 +437,9 @@ function LocalizationSettings() {
         </div>
       ))}
       <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">Save</button>
+        <button onClick={onSave} className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+          <Save size={13} /> Save
+        </button>
       </div>
     </div>
   );
@@ -356,8 +459,27 @@ function PlaceholderSettings({ label }: { label: string }) {
 
 /* ─── Main ─── */
 export default function SettingsPage() {
+  const { updateSettings } = useSettings();
   const [subPage, setSubPage] = useState<SubPage>(null);
+  const [confirmLabel, setConfirmLabel]   = useState<string | null>(null);
+  const [pendingDraft, setPendingDraft]   = useState<Record<string, string> | null>(null);
+
   const current = settingsNav.find(n => n.id === subPage);
+
+  function requestSave(label: string, draft?: Record<string, string>) {
+    setPendingDraft(draft ?? null);
+    setConfirmLabel(label);
+  }
+
+  function onSaveConfirmed() {
+    if (pendingDraft) updateSettings(pendingDraft as Parameters<typeof updateSettings>[0]);
+    setPendingDraft(null);
+    setConfirmLabel(null);
+  }
+
+  const saveTrigger = useCallback(() => {
+    requestSave(current?.label ?? "Settings");
+  }, [current]);
 
   if (subPage) {
     return (
@@ -371,15 +493,23 @@ export default function SettingsPage() {
           <p className="text-sm text-slate-500 mt-0.5">{current?.sub}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-6">
-          {subPage === "general"               && <GeneralSettings />}
-          {subPage === "security"              && <SecuritySettings />}
-          {subPage === "notifications"         && <NotificationsSettings />}
-          {subPage === "email"                 && <EmailSettings />}
-          {subPage === "localization"          && <LocalizationSettings />}
+          {subPage === "general"       && <GeneralSettings onSave={draft => requestSave("General", draft)} />}
+          {subPage === "security"      && <SecuritySettings onSave={saveTrigger} />}
+          {subPage === "notifications" && <NotificationsSettings onSave={saveTrigger} />}
+          {subPage === "email"         && <EmailSettings onSave={saveTrigger} />}
+          {subPage === "localization"  && <LocalizationSettings onSave={saveTrigger} />}
           {(subPage === "users" || subPage === "billing-sub" || subPage === "backup" || subPage === "integrations-settings") && (
             <PlaceholderSettings label={current?.label ?? ""} />
           )}
         </div>
+
+        {confirmLabel && (
+          <SaveConfirm
+            label={confirmLabel}
+            onConfirm={onSaveConfirmed}
+            onCancel={() => { setConfirmLabel(null); setPendingDraft(null); }}
+          />
+        )}
       </div>
     );
   }

@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, BarChart3, Briefcase, ListChecks,
   ClipboardList, Timer, Download, Eye, EyeOff, Star,
   MessageSquare, Plus, Loader2, Activity, Target, History, X,
-  GitPullRequest, Zap,
+  GitPullRequest, Zap, Info,
 } from "lucide-react";
 import ActionFeedback, { type ActionFeedbackData } from "../../components/ui/ActionFeedback";
 import Avatar from "../../components/ui/Avatar";
@@ -170,8 +170,12 @@ const TEAM_PROJECTS_DATA = [
 ];
 
 const COMMISSION_DATA = [
-  { id: "COM-001", client: "Lanka Retail PLC", project: "Retail ERP", invoice: "INV-MC-2026-000012", basis: "Service", amount: 26400, status: "Paid",    date: "2026-09-01" },
-  { id: "COM-002", client: "Sampath Bank PLC", project: "HR System",  invoice: "INV-MC-2026-000010", basis: "Service", amount: 18000, status: "Pending", date: "2026-09-03" },
+  { id: "COM-2026-001", client: "Lanka Retail PLC",    project: "Retail ERP Phase 2",   invoice: "INV-MC-2026-0012", basis: "Service Delivery", amount: 26400, status: "Paid",    date: "2026-09-01", pct: "5%",  note: "Milestone 3 completed" },
+  { id: "COM-2026-002", client: "Sampath Bank PLC",    project: "HR Automation System", invoice: "INV-MC-2026-0010", basis: "Service Delivery", amount: 18000, status: "Pending", date: "2026-09-03", pct: "5%",  note: "Awaiting director approval" },
+  { id: "COM-2026-003", client: "Ceylon Tea Exports",  project: "Inventory Module",     invoice: "INV-MC-2026-0008", basis: "New Business",     amount: 14500, status: "Paid",    date: "2026-08-20", pct: "7%",  note: "New client referral bonus" },
+  { id: "COM-2026-004", client: "Hayleys PLC",         project: "ERP Upgrade",          invoice: "INV-MC-2026-0006", basis: "Renewal",          amount:  9800, status: "Paid",    date: "2026-08-05", pct: "3%",  note: "Contract renewal" },
+  { id: "COM-2026-005", client: "Dialog Axiata",       project: "Network Dashboard",    invoice: "INV-MC-2026-0015", basis: "Service Delivery", amount: 22000, status: "Pending", date: "2026-09-08", pct: "5%",  note: "Final UAT sign-off pending" },
+  { id: "COM-2026-006", client: "John Keells Holdings",project: "Data Analytics Suite", invoice: "INV-MC-2026-0014", basis: "New Business",     amount: 31500, status: "Approved",date: "2026-09-05", pct: "7%",  note: "Processing payroll" },
 ];
 
 const SALARY_HISTORY = [
@@ -872,49 +876,92 @@ export default function WorkspacePage() {
     );
 
     // ── My Commission ──────────────────────────────────────────────────────
-    if (subPage === "commission") return (
-      <div className="p-6 space-y-5">
-        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "var(--font-display)" }}>My Commission</h2>
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: "Total Commission", val: "LKR 44,400",  bg: "bg-emerald-50", text: "text-emerald-700" },
-            { label: "Paid",             val: "LKR 26,400",  bg: "bg-blue-50",    text: "text-blue-700"    },
-            { label: "Pending Approval", val: "LKR 18,000",  bg: "bg-amber-50",   text: "text-amber-700"   },
-            { label: "This Month",       val: "LKR 13,500",  bg: "bg-slate-50",   text: "text-slate-800"   },
-          ].map(s => (
-            <div key={s.label} className={`${s.bg} border border-slate-200 rounded-xl px-4 py-3`}>
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{s.label}</p>
-              <p className={`text-xl font-black font-mono mt-1 ${s.text}`}>{s.val}</p>
+    if (subPage === "commission") {
+      const totalComm  = COMMISSION_DATA.reduce((s, c) => s + c.amount, 0);
+      const paidComm   = COMMISSION_DATA.filter(c => c.status === "Paid").reduce((s, c) => s + c.amount, 0);
+      const pendComm   = COMMISSION_DATA.filter(c => c.status === "Pending").reduce((s, c) => s + c.amount, 0);
+      const approvedC  = COMMISSION_DATA.filter(c => c.status === "Approved").reduce((s, c) => s + c.amount, 0);
+      return (
+        <div className="p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "var(--font-display)" }}>My Commission</h2>
+              <p className="text-sm text-slate-500 mt-0.5">Earnings from service delivery, new business &amp; renewals</p>
             </div>
-          ))}
+            <button onClick={() => onFeedback({ type: "receipt", title: "Commission Statement", message: "Your commission statement for Sept 2026 has been generated.", ref: "STMT-2026-09" })}
+              className="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold transition-colors">
+              <Download size={13} /> Download Statement
+            </button>
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: "Total Earned",     val: `LKR ${fmt(totalComm)}`,  bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", sub: `${COMMISSION_DATA.length} entries` },
+              { label: "Paid",             val: `LKR ${fmt(paidComm)}`,   bg: "bg-blue-50",    border: "border-blue-200",    text: "text-blue-700",    sub: `${COMMISSION_DATA.filter(c=>c.status==="Paid").length} records` },
+              { label: "Pending Approval", val: `LKR ${fmt(pendComm)}`,   bg: "bg-amber-50",   border: "border-amber-200",   text: "text-amber-700",   sub: `${COMMISSION_DATA.filter(c=>c.status==="Pending").length} pending` },
+              { label: "Approved / Queue", val: `LKR ${fmt(approvedC)}`,  bg: "bg-violet-50",  border: "border-violet-200",  text: "text-violet-700",  sub: "Processing payroll" },
+            ].map(s => (
+              <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl px-4 py-4`}>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{s.label}</p>
+                <p className={`text-xl font-black font-mono mt-1 ${s.text}`}>{s.val}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{s.sub}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+              <p className="text-sm font-bold text-slate-700">Commission Records — 2026</p>
+              <p className="text-xs text-slate-400">Commission % set by management · contact HR for queries</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    {["Ref","Client","Project","Invoice","Basis","Rate","Amount","Status","Date","Note"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {COMMISSION_DATA.map(c => (
+                    <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 text-xs font-mono text-blue-700 font-semibold whitespace-nowrap">{c.id}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{c.client}</td>
+                      <td className="px-4 py-3 text-xs text-slate-600">{c.project}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-slate-500 whitespace-nowrap">{c.invoice}</td>
+                      <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{c.basis}</td>
+                      <td className="px-4 py-3 text-xs font-bold text-slate-700 whitespace-nowrap">{c.pct}</td>
+                      <td className="px-4 py-3 text-sm font-mono font-bold text-emerald-700 whitespace-nowrap">LKR {fmt(c.amount)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap"><StatusPill status={c.status} /></td>
+                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{c.date}</td>
+                      <td className="px-4 py-3 text-xs text-slate-400 max-w-[160px] truncate">{c.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-emerald-50 border-t-2 border-emerald-200">
+                    <td colSpan={6} className="px-4 py-3 text-sm font-bold text-slate-700">Total</td>
+                    <td className="px-4 py-3 text-sm font-black font-mono text-emerald-700">LKR {fmt(totalComm)}</td>
+                    <td colSpan={3} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          {/* Info note */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-3">
+            <Info size={15} className="text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              Commission rates are set by the Finance &amp; Management team based on contract type. Approved commissions are processed in the next payroll cycle. For disputes or queries, contact <strong>hr@merncrest.lk</strong>.
+            </p>
+          </div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                {["Commission ID","Client","Project","Invoice","Basis","Amount","Status","Date"].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {COMMISSION_DATA.map(c => (
-                <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 text-xs font-mono text-blue-700 font-semibold">{c.id}</td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{c.client}</td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{c.project}</td>
-                  <td className="px-4 py-3 text-xs font-mono text-slate-600">{c.invoice}</td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{c.basis}</td>
-                  <td className="px-4 py-3 text-sm font-mono font-bold text-emerald-700">LKR {fmt(c.amount)}</td>
-                  <td className="px-4 py-3"><StatusPill status={c.status} /></td>
-                  <td className="px-4 py-3 text-xs text-slate-400">{c.date}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
+      );
+    }
 
     // ── My Timesheets ──────────────────────────────────────────────────────
     if (subPage === "timesheets") return (

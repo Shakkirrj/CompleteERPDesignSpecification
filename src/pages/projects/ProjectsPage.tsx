@@ -3,6 +3,7 @@ import { Plus, Search, Filter, MoreHorizontal, Calendar, Users, DollarSign, Chev
 import StatusBadge from "../../components/ui/StatusBadge";
 import Avatar from "../../components/ui/Avatar";
 import { projects } from "../../data/mockData";
+import ProjectDetailPage from "./ProjectDetailPage";
 
 const tabs = ["All", "In Progress", "Planning", "On Hold", "Completed"];
 
@@ -10,6 +11,11 @@ export default function ProjectsPage() {
   const [tab, setTab] = useState(0);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [search, setSearch] = useState("");
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+
+  if (selectedProject) {
+    return <ProjectDetailPage projectId={selectedProject} onBack={() => setSelectedProject(null)} />;
+  }
 
   const filtered = projects.filter(p => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.client.toLowerCase().includes(search.toLowerCase());
@@ -81,7 +87,7 @@ export default function ProjectsPage() {
       {view === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(p => (
-            <div key={p.id} className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all cursor-pointer group">
+            <div key={p.id} onClick={() => setSelectedProject(p.id)} className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all cursor-pointer group">
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
@@ -133,7 +139,7 @@ export default function ProjectsPage() {
                   <Avatar name={p.manager} size="xs" />
                   <span className="text-xs text-slate-500">{p.manager}</span>
                 </div>
-                <button className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium">View <ChevronRight size={11} /></button>
+                <button onClick={e => { e.stopPropagation(); setSelectedProject(p.id); }} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium">View <ChevronRight size={11} /></button>
               </div>
             </div>
           ))}
@@ -154,7 +160,7 @@ export default function ProjectsPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-slate-50 transition-colors cursor-pointer">
+                <tr key={p.id} onClick={() => setSelectedProject(p.id)} className="hover:bg-slate-50 transition-colors cursor-pointer">
                   <td className="px-5 py-3">
                     <p className="text-sm font-semibold text-slate-800">{p.name}</p>
                     <p className="text-xs text-slate-400 font-mono">{p.id}</p>

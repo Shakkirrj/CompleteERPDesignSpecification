@@ -55,7 +55,7 @@ type NewQuotation = { id: string; client: string; contact: string; salesperson: 
 function NewQuotationModal({ onClose, onSave }: { onClose: () => void; onSave: (q: NewQuotation) => void }) {
   const today = new Date().toISOString().split("T")[0];
   const valid = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
-  const [form, setForm] = useState({ client: "", contact: "", salesperson: salespeople[0], currency: "LKR", validUntil: valid, notes: "", discount: "0" });
+  const [form, setForm] = useState({ client: "", contact: "", salesperson: salespeople[0], currency: "LKR", validUntil: valid, notes: "", discount: "0", vatPct: "15", vatApplied: true });
   const [items, setItems] = useState([{ desc: "", qty: "1", unitPrice: "" }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -65,7 +65,8 @@ function NewQuotationModal({ onClose, onSave }: { onClose: () => void; onSave: (
 
   const subtotal = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
   const discountAmt = Math.min(Number(form.discount) || 0, subtotal);
-  const tax = Math.round((subtotal - discountAmt) * 0.15);
+  const vatRate = form.vatApplied ? Math.min(100, Math.max(0, Number(form.vatPct) || 0)) : 0;
+  const tax = Math.round((subtotal - discountAmt) * vatRate / 100);
   const total = subtotal - discountAmt + tax;
 
   function validate() {
@@ -80,7 +81,7 @@ function NewQuotationModal({ onClose, onSave }: { onClose: () => void; onSave: (
   function handleSave() {
     if (!validate()) return;
     const n = Math.floor(Math.random() * 9000) + 1000;
-    onSave({ id: `QT-2026-${n}`, client: form.client.trim(), contact: form.contact.trim(), salesperson: form.salesperson, date: today, validUntil: form.validUntil, currency: form.currency, subtotal, discount: discountAmt, tax, total, status: "draft", items: items.filter(it => it.desc).length, approvalStatus: null, notes: form.notes.trim() });
+    onSave({ id: `QT-2026-${n}`, client: form.client.trim(), contact: form.contact.trim(), salesperson: form.salesperson, date: today, validUntil: form.validUntil, currency: form.currency, subtotal, discount: discountAmt, tax, total, status: "draft", items: items.filter(it => it.desc).length, approvalStatus: null, notes: `${form.notes.trim()}${form.vatApplied ? ` | VAT ${form.vatPct}% applied` : " | VAT exempt"}` });
   }
 
   return (
@@ -171,11 +172,31 @@ function NewQuotationModal({ onClose, onSave }: { onClose: () => void; onSave: (
             <div className="bg-slate-50 rounded-xl border border-slate-200 px-4 py-3 space-y-2">
               <div className="flex justify-between text-sm"><span className="text-slate-500">Subtotal</span><span className="font-mono font-semibold text-slate-800">LKR {subtotal.toLocaleString()}</span></div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-500 flex-1">Discount</span>
+                <span className="text-slate-500 flex-1">Discount (LKR)</span>
                 <input type="number" min="0" max={subtotal} value={form.discount} onChange={e => setForm(f => ({ ...f, discount: e.target.value }))}
                   className="w-28 text-right border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" />
               </div>
-              <div className="flex justify-between text-sm"><span className="text-slate-500">VAT 15%</span><span className="font-mono font-semibold text-slate-700">LKR {tax.toLocaleString()}</span></div>
+              {/* VAT — editable */}
+              <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-1.5 flex-1">
+                  <input type="checkbox" id="vatApply" checked={form.vatApplied}
+                    onChange={e => setForm(f => ({ ...f, vatApplied: e.target.checked }))}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                  <label htmlFor="vatApply" className="text-slate-600 text-xs select-none">Apply VAT</label>
+                </div>
+                <div className="flex items-center gap-1">
+                  <input type="number" min="0" max="100" value={form.vatPct} disabled={!form.vatApplied}
+                    onChange={e => setForm(f => ({ ...f, vatPct: e.target.value }))}
+                    className="w-14 text-right border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white disabled:opacity-40" />
+                  <span className="text-xs text-slate-400">%</span>
+                </div>
+                <span className="font-mono font-semibold text-slate-700 text-xs">LKR {tax.toLocaleString()}</span>
+              </div>
+              {form.vatApplied && (
+                <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+                  VAT {form.vatPct}% applied as per client registration — verify client VAT status before issuing.
+                </p>
+              )}
               <div className="flex justify-between text-sm border-t border-slate-200 pt-2 font-bold"><span>Total</span><span className="font-mono text-emerald-700">LKR {total.toLocaleString()}</span></div>
             </div>
           </div>
@@ -415,7 +436,13 @@ export default function QuotationsPage() {
                 <div className="px-4 py-3 space-y-2">
                   <div className="flex justify-between"><span className="text-sm text-slate-600">Subtotal</span><span className="text-sm font-semibold text-slate-800">LKR {selected.subtotal.toLocaleString()}</span></div>
                   {selected.discount > 0 && <div className="flex justify-between"><span className="text-sm text-emerald-600">Discount</span><span className="text-sm font-semibold text-emerald-600">-LKR {selected.discount.toLocaleString()}</span></div>}
-                  <div className="flex justify-between"><span className="text-sm text-slate-600">Tax (VAT 15%)</span><span className="text-sm font-semibold text-slate-800">LKR {selected.tax.toLocaleString()}</span></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600">VAT {selected.tax > 0 ? `(${Math.round(selected.tax / Math.max(1, selected.subtotal - selected.discount) * 100)}%)` : "(Exempt)"}</span>
+                    <div className="text-right">
+                      <span className="text-sm font-semibold text-slate-800">LKR {selected.tax.toLocaleString()}</span>
+                      {selected.tax > 0 && <p className="text-[10px] text-amber-600 mt-0.5">Applied per client VAT registration</p>}
+                    </div>
+                  </div>
                   <div className="flex justify-between border-t border-slate-200 pt-2 mt-2">
                     <span className="text-sm font-bold text-slate-900">Total</span>
                     <span className="text-base font-bold text-slate-900">LKR {selected.total.toLocaleString()}</span>

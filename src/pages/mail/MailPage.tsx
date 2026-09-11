@@ -204,12 +204,27 @@ function Composer({ onClose }: { onClose: () => void }) {
 }
 
 /* ─── Email row ─── */
-function EmailRow({ email, selected, onClick }: { email: Email; selected: boolean; onClick: () => void }) {
+function EmailRow({ email, selected, onClick, onDelete }: { email: Email; selected: boolean; onClick: () => void; onDelete: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    setDeleting(true);
+    setTimeout(onDelete, 320);
+  }
   return (
     <div
       onClick={onClick}
-      className={`flex items-start gap-3 px-4 py-3.5 border-b border-slate-100 cursor-pointer transition-colors ${selected ? "bg-blue-50 border-l-2 border-l-blue-600" : email.read ? "hover:bg-slate-50" : "bg-white hover:bg-slate-50"}`}
+      className={`flex items-start gap-3 px-4 py-3.5 border-b border-slate-100 cursor-pointer transition-all group relative overflow-hidden ${selected ? "bg-blue-50 border-l-2 border-l-blue-600" : email.read ? "hover:bg-slate-50" : "bg-white hover:bg-slate-50"} ${deleting ? "opacity-0 -translate-x-full scale-95" : "opacity-100 translate-x-0 scale-100"}`}
+      style={{ transition: "opacity 0.3s, transform 0.3s" }}
     >
+      {/* Quick delete on hover */}
+      <button
+        onClick={handleDelete}
+        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-red-100 rounded-lg text-red-400 hover:text-red-600 z-10"
+        title="Delete"
+      >
+        <Trash2 size={13} />
+      </button>
       <div className="flex-shrink-0 pt-0.5">
         <Avatar name={email.from} size="sm" />
       </div>
@@ -232,10 +247,48 @@ function EmailRow({ email, selected, onClick }: { email: Email; selected: boolea
   );
 }
 
+/* ─── Delete confirmation ─── */
+function DeleteConfirm({ email, onConfirm, onCancel }: { email: Email; onConfirm: () => void; onCancel: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+  function confirm() {
+    setDeleting(true);
+    setTimeout(onConfirm, 700);
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center" onClick={e => e.stopPropagation()}
+        style={{ animation: "deleteConfirmIn 0.25s cubic-bezier(0.34,1.56,0.64,1)" }}>
+        <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 transition-all ${deleting ? "bg-red-500 scale-110" : "bg-red-50"}`}>
+          <Trash2 size={22} className={deleting ? "text-white" : "text-red-500"} />
+        </div>
+        <h3 className="text-base font-bold text-slate-900 mb-1" style={{ fontFamily: "var(--font-display)" }}>Delete Email?</h3>
+        <p className="text-sm text-slate-500 mb-1 truncate px-4">{email.subject}</p>
+        <p className="text-xs text-slate-400 mb-5">This email will be moved to Trash.</p>
+        <div className="flex gap-2">
+          <button onClick={onCancel} disabled={deleting}
+            className="flex-1 py-2.5 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={confirm} disabled={deleting}
+            className="flex-1 py-2.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-semibold disabled:opacity-70 flex items-center justify-center gap-1.5">
+            {deleting ? (
+              <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Deleting...</>
+            ) : (
+              <><Trash2 size={13} /> Delete</>
+            )}
+          </button>
+        </div>
+      </div>
+      <style>{`@keyframes deleteConfirmIn{from{transform:scale(0.85);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
+    </div>
+  );
+}
+
 /* ─── Email detail panel ─── */
-function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) {
+function EmailDetail({ email, onClose, onDelete }: { email: Email; onClose: () => void; onDelete: () => void }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyBody, setReplyBody] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -250,12 +303,23 @@ function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) 
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {[{ icon: Reply, title: "Reply", onClick: () => setReplyOpen(true) }, { icon: ReplyAll, title: "Reply All" }, { icon: Forward, title: "Forward" }, { icon: Archive, title: "Archive" }, { icon: Trash2, title: "Delete" }, { icon: MoreHorizontal, title: "More" }].map(({ icon: Icon, title, onClick }) => (
+          {[{ icon: Reply, title: "Reply", onClick: () => setReplyOpen(true) }, { icon: ReplyAll, title: "Reply All", onClick: undefined }, { icon: Forward, title: "Forward", onClick: undefined }, { icon: Archive, title: "Archive", onClick: undefined }].map(({ icon: Icon, title, onClick }) => (
             <button key={title} title={title} onClick={onClick} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
               <Icon size={15} />
             </button>
           ))}
+          <button title="Delete" onClick={() => setConfirmDelete(true)} className="p-2 hover:bg-red-50 rounded-lg text-slate-500 hover:text-red-500 transition-colors">
+            <Trash2 size={15} />
+          </button>
+          <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"><MoreHorizontal size={15} /></button>
         </div>
+        {confirmDelete && (
+          <DeleteConfirm
+            email={email}
+            onConfirm={() => { setConfirmDelete(false); onDelete(); }}
+            onCancel={() => setConfirmDelete(false)}
+          />
+        )}
       </div>
 
       {/* Scrollable body */}
@@ -369,11 +433,17 @@ function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) 
 export default function MailPage() {
   const [activeAccount, setActiveAccount] = useState(accounts[0]);
   const [activeFolder, setActiveFolder]   = useState("inbox");
+  const [allEmails, setAllEmails]         = useState<Email[]>(emails);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(emails[0]);
   const [showComposer, setShowComposer]   = useState(false);
   const [search, setSearch]              = useState("");
 
-  const visibleEmails = emails.filter(e =>
+  function deleteEmail(id: string) {
+    setAllEmails(prev => prev.map(e => e.id === id ? { ...e, folder: "trash" } : e));
+    if (selectedEmail?.id === id) setSelectedEmail(null);
+  }
+
+  const visibleEmails = allEmails.filter(e =>
     e.folder === activeFolder &&
     (!search || e.subject.toLowerCase().includes(search.toLowerCase()) || e.from.toLowerCase().includes(search.toLowerCase()))
   );
@@ -472,7 +542,7 @@ export default function MailPage() {
             </div>
           ) : (
             visibleEmails.map(e => (
-              <EmailRow key={e.id} email={e} selected={selectedEmail?.id === e.id} onClick={() => setSelectedEmail(e)} />
+              <EmailRow key={e.id} email={e} selected={selectedEmail?.id === e.id} onClick={() => setSelectedEmail(e)} onDelete={() => deleteEmail(e.id)} />
             ))
           )}
         </div>
@@ -481,7 +551,7 @@ export default function MailPage() {
       {/* ── Reading pane ── */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {selectedEmail ? (
-          <EmailDetail email={selectedEmail} onClose={() => setSelectedEmail(null)} />
+          <EmailDetail email={selectedEmail} onClose={() => setSelectedEmail(null)} onDelete={() => deleteEmail(selectedEmail.id)} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Mail size={40} className="text-slate-200 mb-3" />

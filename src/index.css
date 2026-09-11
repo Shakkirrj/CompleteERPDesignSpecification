@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-primary: #2563EB;
   --color-primary-dark: #1D4ED8;
@@ -185,6 +187,66 @@ body {
 .anim-confetti-1    { animation: state-confetti 0.9s ease forwards 0.1s; }
 .anim-confetti-2    { animation: state-confetti 0.9s ease forwards 0.2s; }
 .anim-confetti-3    { animation: state-confetti 0.9s ease forwards 0.35s; }
+
+/* ════════════════════════════════════════════
+   DARK MODE — global overrides
+   (.dark .class has specificity 0,2,0 which
+   beats Tailwind's single-class utilities 0,1,0)
+════════════════════════════════════════════ */
+
+/* Base */
+.dark body { background-color: #0f172a; color: #e2e8f0; }
+
+/* Surfaces */
+.dark .bg-white            { background-color: #1e293b; }
+.dark .bg-slate-50         { background-color: #1e293b; }
+.dark .bg-slate-100        { background-color: #334155; }
+.dark .bg-slate-200        { background-color: #475569; }
+
+/* Hover surfaces */
+.dark .hover\:bg-slate-50:hover  { background-color: #334155; }
+.dark .hover\:bg-slate-100:hover { background-color: #475569; }
+.dark .hover\:bg-slate-200:hover { background-color: #64748b; }
+
+/* Borders */
+.dark .border-slate-50  { border-color: #1e293b; }
+.dark .border-slate-100 { border-color: #1e293b; }
+.dark .border-slate-200 { border-color: #334155; }
+
+/* Dividers */
+.dark .divide-slate-50  > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
+
+/* Text — dark → light */
+.dark .text-slate-900 { color: #f1f5f9; }
+.dark .text-slate-800 { color: #e2e8f0; }
+.dark .text-slate-700 { color: #cbd5e1; }
+.dark .text-slate-600 { color: #94a3b8; }
+
+/* Form elements */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.dark select,
+.dark textarea {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+  color-scheme: dark;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #64748b; }
+
+/* Table */
+.dark table tbody tr:hover { background-color: #334155; }
+
+/* Scrollbar in dark */
+.dark ::-webkit-scrollbar-thumb   { background: #475569; }
+.dark ::-webkit-scrollbar-track   { background: #1e293b; }
+
+/* KBD badges */
+.dark kbd { background-color: #334155; border-color: #475569; color: #cbd5e1; }
+
+/* ════════════════════════════════════════════ */
 
 /* Delay helpers */
 .anim-delay-100 { animation-delay: 100ms; }

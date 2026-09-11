@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { LogOut, Check, Shield, Wifi } from "lucide-react";
+import { useTheme } from "./context/ThemeContext";
 import LoginPage from "./pages/auth/LoginPage";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
@@ -46,8 +47,11 @@ import InventoryPage from "./pages/inventory/InventoryPage";
 import ProcurementPage from "./pages/procurement/ProcurementPage";
 import WorkspacePage from "./pages/workspace/WorkspacePage";
 import MobileAppPage from "./pages/mobile/MobileAppPage";
+import ClientsPage from "./pages/clients/ClientsPage";
+import CommissionPage from "./pages/commission/CommissionPage";
 import CommandCenter from "./components/layout/CommandCenter";
 import GenericPage from "./pages/GenericPage";
+import TourGuide from "./components/tour/TourGuide";
 
 const pageTitles: Record<string, string> = {
   dashboard: "Dashboard",
@@ -69,6 +73,7 @@ const pageTitles: Record<string, string> = {
   commission: "Commission",
   recruitment: "Recruitment",
   crm: "CRM",
+  clients: "Clients",
   services: "Services",
   sales: "Sales",
   quotations: "Quotations",
@@ -101,7 +106,6 @@ const pageTitles: Record<string, string> = {
 };
 
 const genericTitles: Record<string, string> = {
-  commission: "Commission",
   recruitment: "Recruitment",
   documents: "Documents",
   mail: "Mail",
@@ -115,6 +119,34 @@ const genericTitles: Record<string, string> = {
   ai: "AI Assistant",
   api: "API & Secrets",
 };
+
+// ── Logout confirm modal ──────────────────────────────────────────────────
+function LogoutConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[998] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      style={{ animation: "lcIn 0.2s ease" }} onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 text-center"
+        style={{ animation: "lcSlide 0.25s cubic-bezier(0.34,1.56,0.64,1)" }} onClick={e => e.stopPropagation()}>
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <LogOut size={26} className="text-red-500" />
+        </div>
+        <h3 className="text-lg font-black text-slate-900 mb-1" style={{ fontFamily: "var(--font-display)" }}>Sign Out?</h3>
+        <p className="text-sm text-slate-500 mb-6">You will be securely signed out of your MernCrest session. Any unsaved changes will be lost.</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 py-3 text-sm font-semibold border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
+            Stay Signed In
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-3 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors flex items-center justify-center gap-2">
+            <LogOut size={14} /> Sign Out
+          </button>
+        </div>
+      </div>
+      <style>{`@keyframes lcIn{from{opacity:0}to{opacity:1}}@keyframes lcSlide{from{transform:scale(0.88) translateY(12px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}`}</style>
+    </div>
+  );
+}
 
 // ── Logout success overlay ────────────────────────────────────────────────
 function LogoutOverlay({ onDone }: { onDone: () => void }) {
@@ -183,14 +215,22 @@ function LogoutOverlay({ onDone }: { onDone: () => void }) {
 
 // ─────────────────────────────────────────────────────────────────────────
 export default function App() {
+  const { isDark } = useTheme();
   const [loggedIn, setLoggedIn] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [showLogoutAnim, setShowLogoutAnim] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [page, setPage] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
 
   function handleLogout() {
+    setShowLogoutConfirm(true);
+  }
+
+  function confirmLogout() {
+    setShowLogoutConfirm(false);
     setShowLogoutAnim(true);
   }
 
@@ -201,7 +241,7 @@ export default function App() {
   }
 
   if (!loggedIn) {
-    return <LoginPage onLogin={() => setLoggedIn(true)} />;
+    return <LoginPage onLogin={() => { setLoggedIn(true); setShowTour(true); }} />;
   }
 
   // Full-page override: employee registration form
@@ -284,13 +324,15 @@ export default function App() {
       case "inventory": return <InventoryPage />;
       case "procurement": return <ProcurementPage />;
       case "mobile-app": return <MobileAppPage />;
+      case "clients": return <ClientsPage />;
+      case "commission": return <CommissionPage />;
       default:
         return <GenericPage title={genericTitles[page] ?? pageTitles[page] ?? page} />;
     }
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-slate-100">
+    <div className="flex h-full overflow-hidden" style={{ background: isDark ? "#0f172a" : "#f1f5f9" }}>
       <Sidebar
         activePage={currentPage === "employee-detail" ? "employees" : page}
         onNavigate={navigate}
@@ -302,12 +344,16 @@ export default function App() {
           title={title}
           onToggleSidebar={() => setSidebarCollapsed(c => !c)}
           sidebarCollapsed={sidebarCollapsed}
+          onLogout={handleLogout}
+          onShowTour={() => setShowTour(true)}
         />
         <main className="flex-1 overflow-y-auto">
           {renderPage()}
         </main>
       </div>
       <CommandCenter onNavigate={navigate} />
+      {showTour && <TourGuide onClose={() => setShowTour(false)} onNavigate={navigate} />}
+      {showLogoutConfirm && <LogoutConfirm onConfirm={confirmLogout} onCancel={() => setShowLogoutConfirm(false)} />}
       {showLogoutAnim && <LogoutOverlay onDone={finishLogout} />}
     </div>
   );

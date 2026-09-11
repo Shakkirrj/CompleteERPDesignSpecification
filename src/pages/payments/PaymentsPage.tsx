@@ -1,13 +1,15 @@
 import { useState, useCallback } from "react";
 import {
-  Search, Filter, Plus, Download, RefreshCw, Eye, CheckCircle2, XCircle,
-  FileText, Mail, ExternalLink, MoreHorizontal, ChevronDown, X,
-  ArrowUpRight, ArrowDownLeft, Banknote, Building2,
+  Search, Filter, Plus, Download, RefreshCw, Eye, CheckCircle2,
+  FileText, Mail, ChevronDown, X,
+  ArrowUpRight, ArrowDownLeft,
 } from "lucide-react";
 import ActionFeedback, { type ActionFeedbackData } from "../../components/ui/ActionFeedback";
 import PaymentDetail from "./PaymentDetail";
 import RecordPaymentForm from "./RecordPaymentForm";
 import { mockPayments, statusCfg, reconcileCfg, methodLabels, type Payment } from "./paymentsData";
+import PDFPreviewModal from "../../components/pdf/PDFPreviewModal";
+import type { PDFData } from "../../components/pdf/PDFDocument";
 
 type View = "list" | "detail" | "new";
 
@@ -22,9 +24,39 @@ const KPI_CARDS = [
   { label: "Outstanding Payables",   value: "LKR 0.48M",   sub: "Vendor payments",     color: "text-orange-700",  bg: "bg-orange-50",   border: "border-orange-200" },
 ];
 
+function buildReceiptPDF(payment: Payment): PDFData {
+  return {
+    type: "receipt",
+    docNumber: payment.receiptNo ?? payment.id,
+    date: payment.date,
+    currency: payment.currency,
+    exchangeRate: payment.currency !== "LKR" ? payment.exchangeRate : undefined,
+    paymentMethod: methodLabels[payment.method],
+    paymentStatus: "paid",
+    watermark: "PAID",
+    customer: {
+      name: payment.clientName,
+      company: payment.clientCompany,
+      address: "—",
+      email: "—",
+      phone: "—",
+    },
+    items: [{
+      no: 1,
+      description: payment.description + (payment.invoiceNo ? ` (${payment.invoiceNo})` : ""),
+      qty: 1, unit: "pmt", unitPrice: payment.amount,
+      discount: 0, tax: 0, total: payment.amount,
+    }],
+    subtotal: payment.amount, discountTotal: 0, taxTotal: 0,
+    grandTotal: payment.amount, amountPaid: payment.amount, balanceDue: 0,
+    terms: "This receipt confirms payment received. Please retain for your records.",
+  };
+}
+
 export default function PaymentsPage() {
   const [view, setView] = useState<View>("list");
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
   const [feedback, setFeedback] = useState<ActionFeedbackData | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
@@ -257,7 +289,7 @@ export default function PaymentsPage() {
                               <CheckCircle2 size={12} className="text-emerald-600" />
                             </button>
                           )}
-                          <button onClick={e => { e.stopPropagation(); onFeedback({ type: "receipt", title: "Receipt Generated", ref: p.receiptNo ?? p.id, amount: `LKR ${p.amountLKR.toLocaleString()}`, actions: [{ label: "Download PDF", onClick: () => {}, primary: true }] }); }}
+                          <button onClick={e => { e.stopPropagation(); setReceiptPayment(p); }}
                             title="Receipt" className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors">
                             <FileText size={12} className="text-slate-500" />
                           </button>
@@ -284,6 +316,12 @@ export default function PaymentsPage() {
       </div>
 
       <ActionFeedback data={feedback} onDismiss={onDismiss} />
+      {receiptPayment && (
+        <PDFPreviewModal
+          data={buildReceiptPDF(receiptPayment)}
+          onClose={() => setReceiptPayment(null)}
+        />
+      )}
     </>
   );
 }

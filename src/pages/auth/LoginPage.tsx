@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import itBg from "../../assets/it-bg.jpg";
+import mcLogo from "../../assets/merncrest-logo.png";
 import {
   Eye, EyeOff, Lock, Mail, Cpu, Loader2, ArrowRight, ShieldCheck,
   Check, X, Wifi, Server, Shield, Activity, Users,
@@ -418,12 +419,10 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-8 py-4"
         style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30">
-            <Cpu size={18} className="text-white" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <img src={mcLogo} alt="MernCrest" className="w-9 h-9 object-contain" />
           <div>
-            <p className="font-black text-sm leading-none text-slate-900" style={{ fontFamily:"var(--font-display)" }}>MernCrest</p>
+            <p className="font-black text-sm leading-none text-slate-900" style={{ fontFamily:"var(--font-display)" }}>MernCrest Solutions</p>
             <p className="text-[10px] text-slate-500">IT Services ERP</p>
           </div>
         </div>
@@ -485,11 +484,9 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       <div className="relative z-10 w-full max-w-[400px] mx-4 my-20">
         <div className="rounded-3xl p-8 shadow-2xl" style={{ background:"rgba(255,255,255,0.92)", border:"1px solid rgba(0,0,0,0.08)", backdropFilter:"blur(24px)" }}>
 
-          {/* Icon */}
-          <div className="flex justify-center mb-5">
-            <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-600/40">
-              <Cpu size={26} className="text-white" />
-            </div>
+          {/* Logo */}
+          <div className="flex justify-center mb-4">
+            <img src={mcLogo} alt="MernCrest" className="w-20 h-20 object-contain" />
           </div>
 
           <div className="text-center mb-6">

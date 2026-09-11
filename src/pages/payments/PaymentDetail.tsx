@@ -2,11 +2,13 @@ import { useState } from "react";
 import {
   ArrowLeft, CheckCircle2, XCircle, RefreshCw, FileText, Mail,
   Download, ExternalLink, Edit3, Plus, Clock, User, Building2,
-  Banknote, CreditCard, AlertTriangle, Shield, MoreHorizontal,
+  Banknote, Shield, MoreHorizontal,
 } from "lucide-react";
 import type { Payment } from "./paymentsData";
 import { statusCfg, reconcileCfg, methodLabels } from "./paymentsData";
 import type { ActionFeedbackData } from "../../components/ui/ActionFeedback";
+import PDFPreviewModal from "../../components/pdf/PDFPreviewModal";
+import type { PDFData } from "../../components/pdf/PDFDocument";
 
 interface Props {
   payment: Payment;
@@ -23,8 +25,50 @@ const auditLog = [
   { action: "Reconciled",         user: "Rajith Kumara",     time: "16:00",  color: "bg-blue-600"    },
 ];
 
+function buildReceiptPDF(payment: Payment): PDFData {
+  return {
+    type: "receipt",
+    docNumber: payment.receiptNo ?? payment.id,
+    date: payment.date,
+    currency: payment.currency,
+    exchangeRate: payment.currency !== "LKR" ? payment.exchangeRate : undefined,
+    paymentMethod: methodLabels[payment.method],
+    paymentStatus: "paid",
+    watermark: "PAID",
+    customer: {
+      name: payment.clientName,
+      company: payment.clientCompany,
+      address: "—",
+      email: "—",
+      phone: "—",
+    },
+    items: [
+      {
+        no: 1,
+        description: payment.description + (payment.invoiceNo ? ` (${payment.invoiceNo})` : ""),
+        qty: 1,
+        unit: "pmt",
+        unitPrice: payment.amount,
+        discount: 0,
+        tax: 0,
+        total: payment.amount,
+      },
+    ],
+    subtotal:      payment.amount,
+    discountTotal: 0,
+    taxTotal:      0,
+    grandTotal:    payment.amount,
+    amountPaid:    payment.amount,
+    balanceDue:    0,
+    preparedBy:    payment.verifiedBy ?? payment.createdBy,
+    notes: payment.notes,
+    terms: "This receipt confirms payment received. Please retain for your records.",
+  };
+}
+
 export default function PaymentDetail({ payment, onBack, onFeedback }: Props) {
   const [activeTab, setActiveTab] = useState<"summary" | "audit">("summary");
+  const [showReceiptPDF, setShowReceiptPDF] = useState(false);
   const sc = statusCfg[payment.status];
   const rc = reconcileCfg[payment.reconciliationStatus];
 
@@ -41,15 +85,7 @@ export default function PaymentDetail({ payment, onBack, onFeedback }: Props) {
   }
 
   function handleReceipt() {
-    onFeedback({
-      type: "receipt",
-      title: "Receipt Generated",
-      message: "Professional PDF receipt is ready.",
-      ref: payment.receiptNo ?? payment.id,
-      refLabel: "Receipt No.",
-      amount: `LKR ${payment.amountLKR.toLocaleString()}`,
-      actions: [{ label: "Download PDF", onClick: () => {}, primary: true }, { label: "Email", onClick: () => {} }],
-    });
+    setShowReceiptPDF(true);
   }
 
   function handleEmail() {
@@ -272,6 +308,13 @@ export default function PaymentDetail({ payment, onBack, onFeedback }: Props) {
             ))}
           </div>
         </div>
+      )}
+
+      {showReceiptPDF && (
+        <PDFPreviewModal
+          data={buildReceiptPDF(payment)}
+          onClose={() => setShowReceiptPDF(false)}
+        />
       )}
     </div>
   );

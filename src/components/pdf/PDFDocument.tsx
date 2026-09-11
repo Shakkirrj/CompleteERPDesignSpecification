@@ -1,24 +1,6 @@
 import { useRef } from "react";
-
-/* ─── Company / branch config (would come from settings in production) ─── */
-export const companyConfig = {
-  name:         "MernCrest Solutions (Pvt) Ltd",
-  legalName:    "MernCrest Solutions (Private) Limited",
-  regNo:        "PV 00123456",
-  vatNo:        "VAT/2024/MC/0078",
-  address:      "No. 42, Galle Road, Colombo 03, Sri Lanka",
-  phone:        "+94 11 234 5678",
-  email:        "accounts@merncrest.lk",
-  website:      "www.merncrest.lk",
-  bankName:     "Sampath Bank PLC",
-  bankBranch:   "Colombo 03 Branch",
-  accountName:  "MernCrest Solutions (Pvt) Ltd",
-  accountNo:    "1234 5678 9012",
-  swiftCode:    "BSAMLKLX",
-  paymentRef:   "Please quote invoice number as payment reference",
-  logoText:     "MC",             // shown when no logo image is configured
-  logoColor:    "#2563EB",
-};
+import mcLogo from "../../assets/merncrest-logo.png";
+import { useSettings } from "../../context/SettingsContext";
 
 /* ─── Types ─── */
 export interface LineItem {
@@ -114,7 +96,8 @@ const docTitles: Record<PDFData["type"], string> = {
    PDF DOCUMENT COMPONENT — renders as A4 HTML
 ══════════════════════════════════════════════ */
 export default function PDFDocument({ data, forPrint = false }: { data: PDFData; forPrint?: boolean }) {
-  const c   = companyConfig;
+  const { settings } = useSettings();
+  const c   = settings;
   const ps  = data.paymentStatus ? paymentStatusStyles[data.paymentStatus] : null;
   const words = numToWords(data.grandTotal);
 
@@ -272,7 +255,7 @@ export default function PDFDocument({ data, forPrint = false }: { data: PDFData;
       {/* ── Header ── */}
       <div style={s.header}>
         <div style={s.logoBlock}>
-          <div style={s.logoMark}>{c.logoText}</div>
+          <img src={mcLogo} alt="MernCrest" style={{ width: "56px", height: "56px", objectFit: "contain", borderRadius: "4px" }} />
           <div>
             <div style={s.companyName}>{c.name}</div>
             <div style={s.companyMeta}>

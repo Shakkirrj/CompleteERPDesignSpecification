@@ -1,8 +1,13 @@
 import { useState } from "react";
-import { Plus, Search, Phone, Mail, ChevronRight, ArrowUpRight, TrendingUp, Users, Target } from "lucide-react";
+import { Users, Target, TrendingUp, ArrowUpRight, ChevronRight, Phone, Search } from "lucide-react";
 import StatusBadge from "../../components/ui/StatusBadge";
 import Avatar from "../../components/ui/Avatar";
 import { leads } from "../../data/mockData";
+import CRMLeadsPage from "./CRMLeadsPage";
+import CRMContactsPage from "./CRMContactsPage";
+import CRMCompaniesPage from "./CRMCompaniesPage";
+import CRMPipelinePage from "./CRMPipelinePage";
+import CRMActivitiesPage from "./CRMActivitiesPage";
 
 const pipeline = [
   { stage: "Discovery", color: "bg-slate-100 text-slate-700 border-slate-200", count: 4, value: 8200000 },
@@ -12,22 +17,31 @@ const pipeline = [
   { stage: "Won", color: "bg-emerald-50 text-emerald-700 border-emerald-200", count: 7, value: 31500000 },
 ];
 
-const tabs = ["Leads", "Contacts", "Companies", "Pipeline", "Activities"];
+type SubPage = "leads" | "contacts" | "companies" | "pipeline" | "activities" | null;
+
+const sections = [
+  { id: "leads" as SubPage, label: "Leads", sub: "Track & qualify prospects", icon: Target, color: "bg-blue-50 text-blue-600", count: leads.length },
+  { id: "contacts" as SubPage, label: "Contacts", sub: "People & relationships", icon: Users, color: "bg-violet-50 text-violet-600", count: 10 },
+  { id: "companies" as SubPage, label: "Companies", sub: "Account management", icon: Target, color: "bg-emerald-50 text-emerald-600", count: 10 },
+  { id: "pipeline" as SubPage, label: "Pipeline", sub: "Kanban deal board", icon: TrendingUp, color: "bg-amber-50 text-amber-600", count: 10 },
+  { id: "activities" as SubPage, label: "Activities", sub: "Calls, emails & meetings", icon: Phone, color: "bg-pink-50 text-pink-600", count: 8 },
+];
 
 export default function CRMPage() {
-  const [activeTab, setActiveTab] = useState(0);
+  const [subPage, setSubPage] = useState<SubPage>(null);
+
+  if (subPage === "leads") return <CRMLeadsPage onBack={() => setSubPage(null)} />;
+  if (subPage === "contacts") return <CRMContactsPage onBack={() => setSubPage(null)} />;
+  if (subPage === "companies") return <CRMCompaniesPage onBack={() => setSubPage(null)} />;
+  if (subPage === "pipeline") return <CRMPipelinePage onBack={() => setSubPage(null)} />;
+  if (subPage === "activities") return <CRMActivitiesPage onBack={() => setSubPage(null)} />;
 
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "var(--font-display)" }}>CRM</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Sales pipeline · March 2025</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 text-sm bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 rounded-lg transition-colors font-medium">
-            <Plus size={14} /> New Lead
-          </button>
+          <p className="text-sm text-slate-500 mt-0.5">Customer Relationship Management</p>
         </div>
       </div>
 
@@ -54,9 +68,32 @@ export default function CRMPage() {
         ))}
       </div>
 
+      {/* Section navigation cards */}
+      <div className="grid grid-cols-5 gap-3">
+        {sections.map(s => (
+          <button key={s.id} onClick={() => setSubPage(s.id)}
+            className="bg-white rounded-xl border border-slate-200 p-4 text-left hover:shadow-md hover:border-blue-200 transition-all group">
+            <div className={`${s.color} w-10 h-10 rounded-xl flex items-center justify-center mb-3`}>
+              <s.icon size={18} />
+            </div>
+            <p className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">{s.label}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{s.sub}</p>
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-[10px] font-bold text-slate-500">{s.count} records</span>
+              <ChevronRight size={12} className="text-slate-300 group-hover:text-blue-400 transition-colors" />
+            </div>
+          </button>
+        ))}
+      </div>
+
       {/* Pipeline visual */}
       <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-900 text-sm mb-4" style={{ fontFamily: "var(--font-display)" }}>Sales Pipeline</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-slate-900 text-sm" style={{ fontFamily: "var(--font-display)" }}>Sales Pipeline Overview</h3>
+          <button onClick={() => setSubPage("pipeline")} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            Full Pipeline <ChevronRight size={11} />
+          </button>
+        </div>
         <div className="flex items-stretch gap-2">
           {pipeline.map((s, i) => (
             <div key={s.stage} className="flex-1 relative">
@@ -78,24 +115,13 @@ export default function CRMPage() {
         </div>
       </div>
 
-      {/* Leads table */}
+      {/* Recent Leads */}
       <div className="bg-white rounded-xl border border-slate-200">
         <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-          <div className="flex gap-1">
-            {tabs.map((t, i) => (
-              <button
-                key={t}
-                onClick={() => setActiveTab(i)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === i ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-50"}`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input placeholder="Search leads..." className="pl-7 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-44" />
-          </div>
+          <h3 className="font-semibold text-slate-900 text-sm" style={{ fontFamily: "var(--font-display)" }}>Recent Leads</h3>
+          <button onClick={() => setSubPage("leads")} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            View All <ChevronRight size={11} />
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -107,7 +133,6 @@ export default function CRMPage() {
                 <th className="px-3 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Stage</th>
                 <th className="px-3 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Status</th>
                 <th className="px-3 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Owner</th>
-                <th className="px-3 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Source</th>
                 <th className="px-5 py-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Last Activity</th>
               </tr>
             </thead>
@@ -132,7 +157,6 @@ export default function CRMPage() {
                       <span className="text-xs text-slate-600">{l.owner.split(" ")[0]}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-3"><span className="text-xs text-slate-500">{l.source}</span></td>
                   <td className="px-5 py-3"><span className="text-xs text-slate-500">{l.lastActivity}</span></td>
                 </tr>
               ))}

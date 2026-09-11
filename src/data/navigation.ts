@@ -55,6 +55,7 @@ export const navSections: NavSection[] = [
     title: "Sales & CRM",
     items: [
       { id: "crm", label: "CRM", icon: "ContactRound" },
+      { id: "clients", label: "Clients", icon: "Building2" },
       { id: "services", label: "Services", icon: "Briefcase" },
       { id: "sales", label: "Sales", icon: "ShoppingCart" },
       { id: "quotations", label: "Quotations", icon: "FileText" },

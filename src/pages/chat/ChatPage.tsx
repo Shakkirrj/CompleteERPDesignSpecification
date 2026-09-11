@@ -932,6 +932,54 @@ function playChatTone(type: "send" | "receive") {
   } catch { /* blocked */ }
 }
 
+const EMOJI_GROUPS = [
+  { label: "Smileys", emojis: ["😀","😂","🤣","😊","😍","🥰","😎","🤩","🥳","😜","😏","🙄","😅","😆","🤗","😇","🥺","😢","😡","🤔","😴","🤯","🤭","😬","🫡"] },
+  { label: "Gestures", emojis: ["👍","👎","👏","🙌","🤝","👋","✌️","🤞","🫶","❤️","💪","🫂","👀","✅","🔥","⚡","💡","🎉","🎊","🚀","💯","⭐","🌟","💎","🏆"] },
+  { label: "Work", emojis: ["💻","📱","📊","📈","📉","🖥️","⌨️","🖱️","💾","📂","📋","📌","🔧","⚙️","🔒","🛡️","📡","🌐","🔍","📝","✉️","📞","🎯","✔️","⏰"] },
+];
+
+function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose: () => void }) {
+  const [tab, setTab] = useState(0);
+  return (
+    <div className="absolute bottom-14 left-0 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden"
+      style={{ animation: "emojiIn 0.18s cubic-bezier(0.34,1.56,0.64,1)" }}>
+      <div className="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-slate-100">
+        {EMOJI_GROUPS.map((g, i) => (
+          <button key={g.label} onClick={() => setTab(i)}
+            className={`flex-1 py-1 text-[10px] font-semibold rounded-lg transition-colors ${tab === i ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:bg-slate-50"}`}>
+            {g.label}
+          </button>
+        ))}
+        <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg ml-1 text-slate-400"><X size={12} /></button>
+      </div>
+      <div className="p-2 grid grid-cols-8 gap-0.5 max-h-48 overflow-y-auto">
+        {EMOJI_GROUPS[tab].emojis.map(e => (
+          <button key={e} onClick={() => onPick(e)}
+            className="text-xl p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-center leading-none">
+            {e}
+          </button>
+        ))}
+      </div>
+      <style>{`@keyframes emojiIn{from{transform:scale(0.85) translateY(8px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}`}</style>
+    </div>
+  );
+}
+
+function TypingIndicator({ name }: { name: string }) {
+  return (
+    <div className="flex items-end gap-2 mb-1">
+      <Avatar name={name} size="sm" />
+      <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
+        {[0, 1, 2].map(i => (
+          <span key={i} className="w-1.5 h-1.5 bg-slate-400 rounded-full inline-block"
+            style={{ animation: `typingDot 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+        ))}
+      </div>
+      <style>{`@keyframes typingDot{0%,60%,100%{transform:translateY(0);opacity:0.4}30%{transform:translateY(-5px);opacity:1}}`}</style>
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const [convs, setConvs]               = useState<Conversation[]>(initialConversations);
   const [activeConv, setActiveConv]     = useState<Conversation>(initialConversations[0]);
@@ -943,6 +991,8 @@ export default function ChatPage() {
   const [showCreateGroup, setShowCreateGroup]   = useState(false);
   const [activeCall, setActiveCall]             = useState<{ type: CallType; conv: Conversation } | null>(null);
   const [incomingCall, setIncomingCall]         = useState<{ type: CallType; conv: Conversation } | null>(null);
+  const [showEmoji, setShowEmoji]               = useState(false);
+  const [typingUser, setTypingUser]             = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Simulate an incoming call from Kavinda after 8 seconds (demo)
@@ -970,13 +1020,17 @@ export default function ChatPage() {
     playChatTone("send");
     setMessages(prev => [...prev, msg]);
     setText("");
+    setShowEmoji(false);
     setTimeout(() => setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: "delivered" } : m)), 800);
-    /* Simulate incoming reply */
+    /* Show typing indicator then reply */
+    setTimeout(() => setTypingUser(activeConv.name), 1200);
     setTimeout(() => {
-      const reply: Message = { id: `mr${Date.now()}`, from: activeConv.name, fromId: "OTHER", type: "text", text: "Got it, thanks! 👍", time: new Date().toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit", hour12: true }), status: "delivered" };
+      setTypingUser(null);
+      const replies = ["Got it, thanks! 👍", "Understood! ✅", "On it! 🚀", "Perfect, I'll follow up.", "Roger that 👌"];
+      const reply: Message = { id: `mr${Date.now()}`, from: activeConv.name, fromId: "OTHER", type: "text", text: replies[Math.floor(Math.random() * replies.length)], time: new Date().toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit", hour12: true }), status: "delivered" };
       playChatTone("receive");
       setMessages(prev => [...prev, reply]);
-    }, 2200);
+    }, 2800);
   }
 
   function sendVoice(dur: string) {
@@ -1113,6 +1167,7 @@ export default function ChatPage() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1 bg-slate-50/40">
             {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+            {typingUser && <TypingIndicator name={typingUser} />}
             <div ref={bottomRef} />
           </div>
 
@@ -1122,7 +1177,13 @@ export default function ChatPage() {
               <VoiceRecorder onSend={sendVoice} onCancel={() => setRecording(false)} />
             ) : (
               <div className="flex items-end gap-2">
-                <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2.5 flex items-end gap-2">
+                <div className="flex-1 bg-slate-100 rounded-2xl px-4 py-2.5 flex items-end gap-2 relative">
+                  {showEmoji && (
+                    <EmojiPicker
+                      onPick={e => setText(t => t + e)}
+                      onClose={() => setShowEmoji(false)}
+                    />
+                  )}
                   <textarea
                     value={text}
                     onChange={e => setText(e.target.value)}
@@ -1132,7 +1193,7 @@ export default function ChatPage() {
                     className="flex-1 bg-transparent text-sm text-slate-700 resize-none focus:outline-none max-h-32"
                   />
                   <div className="flex items-center gap-0.5 flex-shrink-0 pb-0.5">
-                    <button className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500"><Smile size={15} /></button>
+                    <button onClick={() => setShowEmoji(o => !o)} className={`p-1.5 rounded-lg text-slate-500 transition-colors ${showEmoji ? "bg-blue-100 text-blue-600" : "hover:bg-slate-200"}`}><Smile size={15} /></button>
                     <button className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500"><Paperclip size={15} /></button>
                     <button className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500"><ImageIcon size={15} /></button>
                   </div>
