@@ -1,0 +1,10 @@
+{
+  "description": "Comprehensive ERP platform for IT service companies managing employees, projects, finance, CRM, assets, and infrastructure with advanced automation and analytics.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
